@@ -1,0 +1,20 @@
+name: Validate public installers
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  shell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate shell syntax
+        run: |
+          bash -n install.sh
+          sh -n corade-install.sh
+          sh -n time-sync-check.sh
