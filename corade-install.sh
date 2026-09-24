@@ -159,7 +159,8 @@ CLI_ARTIFACT="coradectl-linux-${ARCH}"
 
 verify_download() {
   artifact="$1"
-  (cd "$TMP_DIR" && sha256sum --check --status "${artifact}.sha256")
+  # BusyBox (Alpine) and GNU coreutils both support -c, not --check/--status.
+  (cd "$TMP_DIR" && sha256sum -c "${artifact}.sha256" >/dev/null)
 }
 
 try_download() {
@@ -400,4 +401,3 @@ if [ "$INIT_SYSTEM" = "systemd" ]; then
 else
   log "logs: tail -f ${OPENRC_LOG_FILE}"
 fi
-
