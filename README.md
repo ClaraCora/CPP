@@ -1,5 +1,7 @@
 # CPP
 
+> 安装前先按 [安全构建与迁移](SECURITY.md) 完成信任建立。以下本地脚本须来自已审核源码或已验签发行包；公网下载内容不能直接管道交给 root。
+
 CPP is the public distribution repository for CPanel and Corade. It contains
 only reviewed installation helpers and release metadata. Source development can
 remain in private repositories; installation never requires a source checkout.
@@ -22,15 +24,15 @@ default branch:
 | Corade | `corade-latest` | `corade-vX.Y.Z` | `corade-linux-*`, `coradectl-linux-*` |
 
 Every binary has a neighboring `.sha256` file. Releases also include source
-commit metadata and a component version file. The scripts verify checksums
-before installing binaries.
+commit metadata, a component version file, and an Ed25519-signed SHA-256 manifest.
+The scripts verify the signature, version and asset digest before installing binaries.
 
 ## Install CPanel
 
 Run as root on Debian 12 or Ubuntu 22.04 and later:
 
 ~~~bash
-curl -fsSL https://raw.githubusercontent.com/ClaraCora/CPP/main/install.sh | sudo bash
+sudo bash ./install.sh
 ~~~
 
 The default listener is `127.0.0.1:8256`. Put HTTPS and the public domain in
@@ -39,7 +41,7 @@ the reverse proxy, then set `CPANEL_EXTERNAL_URL` to that external URL.
 To upgrade:
 
 ~~~bash
-curl -fsSL https://raw.githubusercontent.com/ClaraCora/CPP/main/install.sh | sudo bash -s -- upgrade
+sudo bash ./install.sh upgrade
 ~~~
 
 ## Install Corade
@@ -49,7 +51,7 @@ server ID, the communication key, and the pinned panel public key. A manual
 example is:
 
 ~~~bash
-curl -fsSL https://raw.githubusercontent.com/ClaraCora/CPP/main/corade-install.sh | sudo sh -s -- \
+sudo sh ./corade-install.sh \
   --control-url https://panel.example.com \
   --communication-key REPLACE_WITH_PANEL_KEY \
   --machine-id mch_example \
@@ -59,7 +61,7 @@ curl -fsSL https://raw.githubusercontent.com/ClaraCora/CPP/main/corade-install.s
 To upgrade an installed Agent:
 
 ~~~bash
-curl -fsSL https://raw.githubusercontent.com/ClaraCora/CPP/main/corade-install.sh | sudo sh -s -- upgrade
+sudo coradectl upgrade
 ~~~
 
 `--version vX.Y.Z` selects `corade-vX.Y.Z`; the default selects
@@ -69,7 +71,7 @@ OpenRC with service management, logs, upgrade, and rollback.
 ## Time synchronization
 
 ~~~bash
-curl -fsSL https://raw.githubusercontent.com/ClaraCora/CPP/main/time-sync-check.sh | sudo sh
+sudo sh ./time-sync-check.sh
 ~~~
 
 ## Publication
@@ -79,3 +81,6 @@ checksummed assets to this repository. Both source repositories require an
 Actions secret named `CPP_RELEASE_TOKEN`, scoped only to this `CPP`
 repository with `Contents: Read and write`. Never store that token in this
 repository, installation commands, panel settings, or Agent configuration.
+
+Publication also requires `RELEASE_SIGNING_PRIVATE_KEY` in both source repositories.
+See [SECURITY.md](SECURITY.md) for first signed release ordering, key handling and migration.
