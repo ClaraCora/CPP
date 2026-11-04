@@ -21,7 +21,7 @@ default branch:
 | Component | Rolling release | Versioned release | Assets |
 | --- | --- | --- | --- |
 | CPanel | `cpanel-latest` | `cpanel-vX.Y.Z` when manually published | `cpanel-linux-amd64`, `cpanel-linux-arm64` |
-| Corade | `corade-latest` | `corade-vX.Y.Z` | `corade-linux-*`, `coradectl-linux-*` |
+| Corade | `corade-latest` | `corade-vX.Y.Z` | `corade-linux-*`, `coradectl-linux-*`, signed `corade-offline-linux.tar.gz` (v2.0.11+) |
 
 Every binary has a neighboring `.sha256` file. Releases also include source
 commit metadata, a component version file, and an Ed25519-signed SHA-256 manifest.
@@ -68,6 +68,42 @@ sudo coradectl upgrade
 `corade-latest`. The installer supports amd64 and arm64, including Alpine
 OpenRC with service management, logs, upgrade, and rollback.
 
+## Agent 离线升级包
+
+从 **v2.0.11** 开始，每次正式 Agent 发布都自动生成离线升级包，并同时上传版本发行和 `corade-latest`。一个包包含 **Linux amd64 与 arm64** 的 Agent、CLI、原始发行签名、升级及回退脚本和中文说明。
+
+| 下载 | 最新版固定链接 |
+| --- | --- |
+| 离线包 | [corade-offline-linux.tar.gz](https://github.com/ClaraCora/CPP/releases/download/corade-latest/corade-offline-linux.tar.gz) |
+| 压缩包校验和 | [corade-offline-linux.tar.gz.sha256](https://github.com/ClaraCora/CPP/releases/download/corade-latest/corade-offline-linux.tar.gz.sha256) |
+| 校验和签名 | [corade-offline-linux.tar.gz.sha256.sig](https://github.com/ClaraCora/CPP/releases/download/corade-latest/corade-offline-linux.tar.gz.sha256.sig) |
+
+需要固定版本时，在 [Releases](https://github.com/ClaraCora/CPP/releases) 选择 `corade-vX.Y.Z`，下载同名的三个文件。历史固定版本保留，旧版发行不会被覆盖。
+
+在能访问 GitHub 的电脑上下载这三个文件，再完整传到目标机器。首次核对发行公钥的方式见 [SECURITY.md](SECURITY.md)；将独立取得且已核对的可信公钥保存为 `/etc/cpanel-release-public-key.pem`。先验证签名与摘要，再解压执行：
+
+```sh
+openssl pkeyutl -verify -pubin -inkey /etc/cpanel-release-public-key.pem \
+  -rawin -in corade-offline-linux.tar.gz.sha256 \
+  -sigfile corade-offline-linux.tar.gz.sha256.sig
+sha256sum -c corade-offline-linux.tar.gz.sha256
+```
+
+以上两步全部成功后，在新的独立目录解压：
+
+```sh
+work=$(mktemp -d)
+tar -xzf corade-offline-linux.tar.gz -C "$work"
+cd "$work/corade-offline"
+sudo sh upgrade.sh --check
+# 预检查成功后执行：
+sudo sh upgrade.sh --apply
+```
+
+目标为已安装并正常运行的标准 `corade` 服务，支持 systemd / Alpine OpenRC；不用于首次安装。需要预装 OpenSSL 3、常用文件工具，以及启用本机健康接口时所需的 curl。升级不访问 GitHub、不安装依赖，保留原配置、证书和身份，备份旧 Agent/CLI，失败自动恢复。手动回退按包内 README 的实际备份路径执行。
+
+机器仍需能访问原 CPanel。升级后检查面板心跳和节点应用结果；本机健康检查不代表节点已应用。包内不含生产配置、令牌或私钥。
+
 ## Time synchronization
 
 ~~~bash
@@ -84,3 +120,9 @@ repository, installation commands, panel settings, or Agent configuration.
 
 Publication also requires `RELEASE_SIGNING_PRIVATE_KEY` in both source repositories.
 See [SECURITY.md](SECURITY.md) for first signed release ordering, key handling and migration.
+
+Corade publication also gates the offline bundle on isolated upgrade/rollback and
+signature tests. It signs the complete package inventory, then the archive checksum,
+and includes all three offline assets in the outer signed release manifest. The
+archive uses an explicit asset allowlist; signing keys and local configuration are
+never included. Package generation or verification failure blocks the release.
